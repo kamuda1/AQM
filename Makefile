@@ -62,3 +62,18 @@ flash: upload monitor ## Upload then open the serial monitor
 .PHONY: clean
 clean: ## Remove build artifacts
 	$(PIO) run --target clean
+
+# --- Time-series stack (InfluxDB + Grafana) ---
+
+.PHONY: stack-up
+stack-up: ## Start the InfluxDB + Grafana containers
+	docker compose up -d
+	@echo "InfluxDB: http://localhost:8086   Grafana: http://localhost:3000"
+
+.PHONY: stack-down
+stack-down: ## Stop the InfluxDB + Grafana containers
+	docker compose down
+
+.PHONY: stack-logs
+stack-logs: ## Tail logs from the stack
+	docker compose logs -f

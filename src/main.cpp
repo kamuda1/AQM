@@ -1,9 +1,15 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <WiFi.h>
+#include <InfluxDbClient.h>
 #include <SensirionI2cScd4x.h>
 #include <BH1750.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME680.h>
+
+// WiFi + InfluxDB credentials live in include/secrets.h (gitignored).
+// Copy include/secrets.h.example to include/secrets.h and fill it in.
+#include "secrets.h"
 
 // The Sensirion SCD4x driver returns 0 on success but only defines NO_ERROR
 // internally; its example sketches expect callers to declare it themselves.
@@ -20,6 +26,11 @@ SensirionI2cScd4x scd4x;
 BH1750 lightMeter;
 Adafruit_BME680 bme;
 
+// InfluxDB 2.x client. All readings are written to a single measurement
+// ("air_quality") tagged with the device name so multiple sensors can share
+// one bucket.
+InfluxDBClient influx(INFLUXDB_URL, INFLUXDB_ORG, INFLUXDB_BUCKET, INFLUXDB_TOKEN);
+
 uint32_t lastReadMs = 0;
 
 void printScd4xError(const char* context, uint16_t error) {
@@ -31,9 +42,52 @@ void printScd4xError(const char* context, uint16_t error) {
   Serial.println(errorMessage);
 }
 
+void connectWiFi() {
+  Serial.print("Connecting to WiFi ");
+  Serial.print(WIFI_SSID);
+  WiFi.mode(WIFI_STA);
+  // The board runs unattended off USB power, so keep the radio awake (modem
+  // sleep drops the occasional write) and let the SDK reconnect on its own.
+  WiFi.setSleep(false);
+  WiFi.setAutoReconnect(true);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  // Block until associated; the sensors don't produce useful data for the
+  // first few seconds anyway, so there's nothing to lose by waiting here.
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.print(" connected, IP: ");
+  Serial.println(WiFi.localIP());
+}
+
+// Called every cycle. If the link dropped, try to bring it back within a
+// bounded window so sensor reads and serial output keep flowing regardless.
+void ensureWiFi() {
+  if (WiFi.status() == WL_CONNECTED) {
+    return;
+  }
+  Serial.println("WiFi disconnected, reconnecting...");
+  WiFi.reconnect();
+  uint32_t start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) {
+    delay(250);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   Wire.begin();
+
+  connectWiFi();
+
+  if (influx.validateConnection()) {
+    Serial.print("Connected to InfluxDB: ");
+    Serial.println(influx.getServerUrl());
+  } else {
+    Serial.print("InfluxDB connection failed: ");
+    Serial.println(influx.getLastErrorMessage());
+  }
 
   scd4x.begin(Wire, SCD41_I2C_ADDR_62);
   uint16_t error = scd4x.startPeriodicMeasurement();
@@ -62,6 +116,14 @@ void loop() {
   }
   lastReadMs = now;
 
+  ensureWiFi();
+
+  // Accumulate this cycle's readings into a single point. Fields are only
+  // added when their sensor read succeeds, so a failing sensor drops out of
+  // the time series rather than writing a bogus zero.
+  Point reading("air_quality");
+  reading.addTag("device", DEVICE_NAME);
+
   bool scd4xDataReady = false;
   uint16_t error = scd4x.getDataReadyStatus(scd4xDataReady);
   if (error != NO_ERROR) {
@@ -74,6 +136,9 @@ void loop() {
     if (error != NO_ERROR) {
       printScd4xError("readMeasurement", error);
     } else {
+      reading.addField("co2", co2);
+      reading.addField("scd4x_temperature", scd4xTemperature);
+      reading.addField("scd4x_humidity", scd4xHumidity);
       Serial.print("CO2: ");
       Serial.print(co2);
       Serial.print(" ppm, Temp: ");
@@ -85,6 +150,9 @@ void loop() {
   }
 
   float lux = lightMeter.readLightLevel();
+  if (lux >= 0.0f) {
+    reading.addField("light", lux);
+  }
   Serial.print("Light: ");
   Serial.print(lux);
   Serial.println(" lx");
@@ -92,6 +160,10 @@ void loop() {
   if (!bme.performReading()) {
     Serial.println("BME680 read failed");
   } else {
+    reading.addField("bme_temperature", bme.temperature);
+    reading.addField("bme_humidity", bme.humidity);
+    reading.addField("pressure", bme.pressure / 100.0);
+    reading.addField("gas_resistance", bme.gas_resistance / 1000.0);
     Serial.print("BME680 Temp: ");
     Serial.print(bme.temperature);
     Serial.print(" C, RH: ");
@@ -101,6 +173,14 @@ void loop() {
     Serial.print(" hPa, Gas: ");
     Serial.print(bme.gas_resistance / 1000.0);
     Serial.println(" kOhm");
+  }
+
+  // Only write if at least one sensor produced a field this cycle.
+  if (reading.hasFields()) {
+    if (!influx.writePoint(reading)) {
+      Serial.print("InfluxDB write failed: ");
+      Serial.println(influx.getLastErrorMessage());
+    }
   }
 
   Serial.println();

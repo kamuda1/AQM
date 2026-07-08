@@ -1,0 +1,17 @@
+# Auto-provisions the InfluxDB datasource in Grafana so no manual setup is
+# needed. Values must match docker-compose.yml (org/token) — the datasource
+# talks to the influxdb container over the compose network.
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    isDefault: true
+    jsonData:
+      version: Flux
+      organization: aqm
+      defaultBucket: aqm
+    secureJsonData:
+      token: aqm-dev-token-change-me
