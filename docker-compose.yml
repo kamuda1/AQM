@@ -4,12 +4,15 @@
 #   make stack-down    # stop them
 #
 # InfluxDB is initialised in "setup" mode with the org/bucket/token below.
-# These MUST match include/secrets.h. Change the token/password before any
-# non-LAN deployment.
+# Credentials and the Tailscale hostname come from .env (gitignored) - copy
+# .env.example to .env and fill in real values before running this. The
+# InfluxDB token MUST match include/secrets.h.
 #
 # After first start:
-#   - InfluxDB UI:  http://localhost:8086   (login: admin / aqm-admin-pw)
-#   - Grafana UI:   http://localhost:3000    (login: admin / admin)
+#   - InfluxDB UI:  http://localhost:8086   (login: admin / $INFLUXDB_ADMIN_PASSWORD)
+#   - Grafana UI:   http://localhost:3001    (login: admin / admin)
+#     (host port 3001, not Grafana's default 3000 - avoids clashing with
+#     other services on this host, e.g. open-webui)
 # The Grafana InfluxDB datasource is auto-provisioned (see grafana/provisioning).
 
 services:
@@ -22,10 +25,10 @@ services:
     environment:
       DOCKER_INFLUXDB_INIT_MODE: setup
       DOCKER_INFLUXDB_INIT_USERNAME: admin
-      DOCKER_INFLUXDB_INIT_PASSWORD: aqm-admin-pw
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_ADMIN_PASSWORD}
       DOCKER_INFLUXDB_INIT_ORG: aqm
       DOCKER_INFLUXDB_INIT_BUCKET: aqm
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: aqm-dev-token-change-me
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
     volumes:
       - influxdb-data:/var/lib/influxdb2
       - influxdb-config:/etc/influxdb2
@@ -35,9 +38,17 @@ services:
     container_name: aqm-grafana
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       - influxdb
+    environment:
+      # Served via Tailscale Serve at /aqm (see README) - these tell Grafana
+      # it's mounted under a subpath so its own links/assets resolve correctly.
+      GF_SERVER_ROOT_URL: https://${TAILSCALE_HOSTNAME}/aqm/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      # Passed through so the InfluxDB datasource provisioning file (below)
+      # can pick it up via Grafana's $__env{} expansion.
+      INFLUXDB_ADMIN_TOKEN: ${INFLUXDB_ADMIN_TOKEN}
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning

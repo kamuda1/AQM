@@ -36,7 +36,7 @@ install: ## Install PlatformIO Core via uv if it is not already present
 		echo "PlatformIO already installed: $$($(PIO) --version)"; \
 	else \
 		echo "Installing PlatformIO Core with uv..."; \
-		$(UV) tool install platformio; \
+		$(UV) tool install --with pip platformio; \
 		echo "PlatformIO installed. Ensure '$(UV) tool dir'/../bin is on your PATH (run: $(UV) tool update-shell)."; \
 	fi
 
@@ -68,7 +68,7 @@ clean: ## Remove build artifacts
 .PHONY: stack-up
 stack-up: ## Start the InfluxDB + Grafana containers
 	docker compose up -d
-	@echo "InfluxDB: http://localhost:8086   Grafana: http://localhost:3000"
+	@echo "InfluxDB: http://localhost:8086   Grafana: http://localhost:3001"
 
 .PHONY: stack-down
 stack-down: ## Stop the InfluxDB + Grafana containers

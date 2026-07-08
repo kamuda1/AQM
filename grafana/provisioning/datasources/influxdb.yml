@@ -1,6 +1,8 @@
 # Auto-provisions the InfluxDB datasource in Grafana so no manual setup is
-# needed. Values must match docker-compose.yml (org/token) — the datasource
-# talks to the influxdb container over the compose network.
+# needed. Org must match docker-compose.yml; the token is pulled from the
+# INFLUXDB_ADMIN_TOKEN container env var (see docker-compose.yml / .env) via
+# Grafana's $__env{} provisioning syntax. The datasource talks to the
+# influxdb container over the compose network.
 apiVersion: 1
 
 datasources:
@@ -14,4 +16,4 @@ datasources:
       organization: aqm
       defaultBucket: aqm
     secureJsonData:
-      token: aqm-dev-token-change-me
+      token: $__env{INFLUXDB_ADMIN_TOKEN}
