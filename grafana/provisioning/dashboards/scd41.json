@@ -1,0 +1,60 @@
+{
+  "id": null,
+  "uid": "aqm-scd41",
+  "title": "SCD-41",
+  "tags": ["aqm"],
+  "timezone": "",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 0,
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "30s",
+  "annotations": { "list": [] },
+  "templating": { "list": [] },
+  "links": [],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "SCD-41 CO2",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
+      "fieldConfig": { "defaults": { "unit": "ppm" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
+          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"co2\")"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "SCD-41 Temperature",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
+      "fieldConfig": { "defaults": { "unit": "celsius" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
+          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"scd4x_temperature\")"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "SCD-41 Humidity",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
+          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"scd4x_humidity\")"
+        }
+      ]
+    }
+  ]
+}

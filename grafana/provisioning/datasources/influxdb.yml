@@ -7,6 +7,7 @@ apiVersion: 1
 
 datasources:
   - name: InfluxDB
+    uid: aqm-influxdb
     type: influxdb
     access: proxy
     url: http://influxdb:8086

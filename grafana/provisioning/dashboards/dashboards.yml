@@ -1,0 +1,14 @@
+# Auto-provisions dashboards from this directory so no manual import is
+# needed. Dashboard JSON files live alongside this config.
+apiVersion: 1
+
+providers:
+  - name: AQM
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
