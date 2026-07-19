@@ -11,6 +11,14 @@
 // Copy include/secrets.h.example to include/secrets.h and fill it in.
 #include "secrets.h"
 
+// Which physical board this is. Set per-board by the PlatformIO environment
+// (see platformio.ini: `comfort`, `mushroom`, ...) so one firmware/secrets
+// pair can flash multiple boards, each writing under its own InfluxDB tag.
+// The fallback keeps a bare `pio run` (no env flag) building.
+#ifndef DEVICE_NAME
+#define DEVICE_NAME "esp32-aqm"
+#endif
+
 // The Sensirion SCD4x driver returns 0 on success but only defines NO_ERROR
 // internally; its example sketches expect callers to declare it themselves.
 #define NO_ERROR 0

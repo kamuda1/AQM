@@ -16,6 +16,14 @@
 UV  ?= uv
 PIO ?= $(shell command -v pio 2>/dev/null || echo $(shell $(UV) tool dir 2>/dev/null)/platformio/bin/pio)
 
+# Which board to build/flash. One PlatformIO environment per physical board
+# (see platformio.ini). Override on the command line, e.g.:
+#   make flash ENV=mushroom
+ENV ?= comfort
+
+# Device tag to inspect with `make check` (matches DEVICE_NAME / the env).
+DEVICE ?= esp32-mushroom
+
 .DEFAULT_GOAL := help
 
 .PHONY: help
@@ -45,23 +53,38 @@ deps: ## Download board platform and library dependencies from platformio.ini
 	$(PIO) pkg install
 
 .PHONY: build
-build: ## Compile the firmware
-	$(PIO) run
+build: ## Compile the firmware (ENV=comfort|mushroom)
+	$(PIO) run -e $(ENV)
 
 .PHONY: upload
-upload: ## Compile and flash the firmware to a connected ESP32
-	$(PIO) run --target upload
+upload: ## Compile and flash the firmware to a connected ESP32 (ENV=...)
+	$(PIO) run -e $(ENV) --target upload
 
 .PHONY: monitor
 monitor: ## Open the serial monitor (115200 baud)
-	$(PIO) device monitor
+	$(PIO) device monitor -e $(ENV)
 
 .PHONY: flash
-flash: upload monitor ## Upload then open the serial monitor
+flash: upload monitor ## Upload then open the serial monitor (ENV=...)
+
+.PHONY: check
+check: ## Show the latest InfluxDB reading per field for a board (DEVICE=...)
+	@SEC=include/secrets.h; \
+	get() { grep "^#define $$1 " $$SEC | sed -E 's/.*"([^"]*)".*/\1/'; }; \
+	URL=$$(get INFLUXDB_URL); ORG=$$(get INFLUXDB_ORG); \
+	BUCKET=$$(get INFLUXDB_BUCKET); TOKEN=$$(get INFLUXDB_TOKEN); \
+	echo "Latest '$(DEVICE)' readings from $$URL (bucket $$BUCKET, last 10m):"; \
+	curl -s -m 10 "$$URL/api/v2/query?org=$$ORG" \
+		-H "Authorization: Token $$TOKEN" \
+		-H "Content-Type: application/vnd.flux" \
+		-H "Accept: application/csv" \
+		--data "from(bucket:\"$$BUCKET\") |> range(start:-10m) |> filter(fn:(r)=>r.device==\"$(DEVICE)\") |> last() |> keep(columns:[\"_time\",\"_field\",\"_value\"])" \
+		| tr -d '\r'; \
+	echo "(no rows below the header = board isn't writing yet; check the serial monitor for 'InfluxDB write failed')"
 
 .PHONY: clean
-clean: ## Remove build artifacts
-	$(PIO) run --target clean
+clean: ## Remove build artifacts (ENV=...)
+	$(PIO) run -e $(ENV) --target clean
 
 # --- Time-series stack (InfluxDB + Grafana) ---
 
