@@ -17,56 +17,73 @@
     {
       "type": "timeseries",
       "title": "BME680 Temperature",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
       "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
       "fieldConfig": { "defaults": { "unit": "celsius" }, "overrides": [] },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
-          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"bme_temperature\")"
+          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"bme_temperature\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
         }
       ]
     },
     {
       "type": "timeseries",
       "title": "BME680 Humidity",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "description": "Indoor relative humidity. Bands (EPA/ASHRAE-style comfort/mold-risk guidance): <30% Too Dry, 30-55% Comfortable, 55-60% Borderline, 60-70% Humid (mold risk), >70% Very Humid.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
       "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
-      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#fab219", "value": null },
+              { "color": "#0ca30c", "value": 30 },
+              { "color": "#fab219", "value": 55 },
+              { "color": "#ec835a", "value": 60 },
+              { "color": "#d03b3b", "value": 70 }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
-          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"bme_humidity\")"
+          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"bme_humidity\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
         }
       ]
     },
     {
       "type": "timeseries",
       "title": "BME680 Pressure",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
       "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
       "fieldConfig": { "defaults": { "unit": "pressurehpa" }, "overrides": [] },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
-          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"pressure\")"
+          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"pressure\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
         }
       ]
     },
     {
       "type": "timeseries",
       "title": "BME680 Gas Resistance (kΩ)",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
       "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
       "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
-          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"gas_resistance\")"
+          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"gas_resistance\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
         }
       ]
     }

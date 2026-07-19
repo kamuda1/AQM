@@ -17,42 +17,58 @@
     {
       "type": "timeseries",
       "title": "SCD-41 CO2",
+      "description": "Bands (common indoor air quality guidance): <800ppm Good, 800-1200 Moderate, 1200-2000 Poor, >2000 Very Poor (stuffiness/drowsiness).",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
       "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
-      "fieldConfig": { "defaults": { "unit": "ppm" }, "overrides": [] },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ppm",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#0ca30c", "value": null },
+              { "color": "#fab219", "value": 800 },
+              { "color": "#ec835a", "value": 1200 },
+              { "color": "#d03b3b", "value": 2000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
-          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"co2\")"
+          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"co2\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
         }
       ]
     },
     {
       "type": "timeseries",
       "title": "SCD-41 Temperature",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
       "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
       "fieldConfig": { "defaults": { "unit": "celsius" }, "overrides": [] },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
-          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"scd4x_temperature\")"
+          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"scd4x_temperature\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
         }
       ]
     },
     {
       "type": "timeseries",
       "title": "SCD-41 Humidity",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
       "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
       "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "aqm-influxdb" },
-          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"scd4x_humidity\")"
+          "query": "from(bucket: \"aqm\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"air_quality\")\n  |> filter(fn: (r) => r._field == \"scd4x_humidity\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
         }
       ]
     }
