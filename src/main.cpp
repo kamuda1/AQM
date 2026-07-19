@@ -90,7 +90,40 @@ void setup() {
   }
 
   scd4x.begin(Wire, SCD41_I2C_ADDR_62);
-  uint16_t error = scd4x.startPeriodicMeasurement();
+  delay(30);
+
+  // `make flash` resets the ESP32 but not the SCD-41, so on a reflash the
+  // sensor is often still running periodic measurement from the previous
+  // session. In that state it rejects startPeriodicMeasurement(), and no CO2
+  // is ever read. Bring it back to a known-idle state first (the driver's
+  // stop/reinit calls include their required settling delays internally).
+  uint16_t error = scd4x.wakeUp();
+  if (error != NO_ERROR) {
+    printScd4xError("wakeUp", error);
+  }
+  error = scd4x.stopPeriodicMeasurement();
+  if (error != NO_ERROR) {
+    printScd4xError("stopPeriodicMeasurement", error);
+  }
+  error = scd4x.reinit();
+  if (error != NO_ERROR) {
+    printScd4xError("reinit", error);
+  }
+
+  // Diagnostic: prove the ESP32 can actually talk to the SCD-41 over I2C.
+  // Must run while the sensor is idle (not in periodic measurement).
+  uint64_t scd4xSerial = 0;
+  error = scd4x.getSerialNumber(scd4xSerial);
+  if (error != NO_ERROR) {
+    printScd4xError("getSerialNumber", error);
+    Serial.println("SCD-41 not responding on I2C -- check wiring/pinout");
+  } else {
+    Serial.print("SCD-41 serial: 0x");
+    Serial.print((uint32_t)(scd4xSerial >> 32), HEX);
+    Serial.println((uint32_t)(scd4xSerial & 0xFFFFFFFF), HEX);
+  }
+
+  error = scd4x.startPeriodicMeasurement();
   if (error != NO_ERROR) {
     printScd4xError("startPeriodicMeasurement", error);
   }
@@ -124,8 +157,18 @@ void loop() {
   Point reading("air_quality");
   reading.addTag("device", DEVICE_NAME);
 
+  // The SCD-41 produces a new sample every ~5s. Polling once per 5s cycle
+  // phase-locks with that cadence and can miss the ready window on every
+  // cycle, so actively wait (bounded) for the sample to become ready.
   bool scd4xDataReady = false;
-  uint16_t error = scd4x.getDataReadyStatus(scd4xDataReady);
+  uint16_t error = NO_ERROR;
+  for (uint8_t attempt = 0; attempt < 20; attempt++) {
+    error = scd4x.getDataReadyStatus(scd4xDataReady);
+    if (error != NO_ERROR || scd4xDataReady) {
+      break;
+    }
+    delay(100);
+  }
   if (error != NO_ERROR) {
     printScd4xError("getDataReadyStatus", error);
   } else if (scd4xDataReady) {
